@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>8 Relay Control (WebSocket)</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f0f0f0;
+      margin: 20px;
+    }
+
+    .container {
+      display: inline-block;
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    }
+
+    h1 {
+      color: #2c3e50;
+    }
+
+    .relay {
+      margin: 15px;
+      padding: 15px;
+      width: 200px;
+      display: inline-block;
+      vertical-align: top;
+    }
+
+    button {
+      width: 80px;
+      padding: 12px;
+      margin: 5px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      color: white;
+    }
+
+    .on {
+      background: #27ae60;
+    }
+
+    .off {
+      background: #c0392b;
+    }
+
+    .status {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    #connection {
+      margin: 20px;
+      padding: 10px;
+      font-weight: bold;
+      border-radius: 5px;
+    }
+
+    .connected {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🛡️ 8-Relay Control (Room Test)</h1>
+    <div id="connection">Connecting to WebSocket...</div>
+    <div id="relays"></div>
+  </div>
+
+  <script>
+    const PHONE_IP = "192.168.10.41";  // Change to your MQTT broker IP
+    const mqttConfig = {
+      broker: PHONE_IP,
+      ws_port: 9001,
+      topic: 'dev/data',
+      status_topic: 'dev/status'
+    };
+
+    const client = mqtt.connect(`ws://${mqttConfig.broker}:${mqttConfig.ws_port}`);
+
+    const relaysDiv = document.getElementById('relays');
+    for (let i = 1; i <= 8; i++) {
+      const div = document.createElement('div');
+      div.className = 'relay';
+      div.innerHTML = `
+        <h3>Relay ${i}</h3>
+        <button class="on" onclick="send(${i}, 'on')">ON</button>
+        <button class="off" onclick="send(${i}, 'off')">OFF</button>
+        <div class="status" id="status${i}">Unknown</div>
+      `;
+      relaysDiv.appendChild(div);
+    }
+
+    client.on('connect', () => {
+      const conn = document.getElementById('connection');
+      conn.innerHTML = '✅ WebSocket Connected! (Click a button)';
+      conn.className = 'connected';
+      client.subscribe(mqttConfig.status_topic);
+    });
+
+    client.on('message', (topic, message) => {
+      if (topic === mqttConfig.status_topic) {
+        const states = JSON.parse(message.toString());
+        for (let i = 1; i <= 8; i++) {
+          const status = document.getElementById(`status${i}`);
+          const st = states[String(i)];
+          if (st) {
+            status.innerText = st.toUpperCase();
+            status.style.color = st === 'on' ? 'green' : 'red';
+          }
+        }
+        console.log(`Received states: ${message}`);
+      }
+    });
+
+    client.on('error', (err) => {
+      const conn = document.getElementById('connection');
+      conn.innerHTML = `❌ WebSocket Error: ${err}`;
+      conn.className = 'error';
+    });
+
+    client.on('close', () => {
+      document.getElementById('connection').innerHTML = '🔌 WebSocket Closed.';
+      document.getElementById('connection').className = 'error';
+    });
+
+    function send(relay, state) {
+      const msg = relay + state;
+      client.publish(mqttConfig.topic, msg);
+      const status = document.getElementById(`status${relay}`);
+      status.innerText = state.toUpperCase();
+      status.style.color = state === 'on' ? 'green' : 'red';
+      console.log(`Sent: ${msg}`);
+    }
+  </script>
+</body>
+
+</html>
