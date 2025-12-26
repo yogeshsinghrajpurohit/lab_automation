@@ -4,15 +4,13 @@
 #include <WiFi.h>
 
 class WiFiManager {
-private:
     const char* ssid;
     const char* password;
 
 public:
-    WiFiManager(const char* ssid, const char* password);
+    WiFiManager(const char* s, const char* p);
     void begin();
     bool isConnected();
-    IPAddress getLocalIP();
 };
 
-#endif // WIFI_MANAGER_H
+#endif
