@@ -12,13 +12,27 @@ void MQTTManager::setCallback(std::function<void(char*, byte*, unsigned int)> cb
 
 void MQTTManager::begin() {
     client.setServer(server, port);
-    client.setWill("dev/online", "offline", true, 1);
 }
 
 void MQTTManager::loop() {
     if (!client.connected()) {
-        if (client.connect("ESP32", user, password)) {
+
+        String clientId = "ESP32-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+
+        // ✅ CORRECT PLACE FOR LWT
+        if (client.connect(
+                clientId.c_str(),
+                user,
+                password,
+                "dev/online",   // will topic
+                1,              // QoS
+                true,           // retained
+                "offline"       // will message
+            )) {
+
             client.subscribe("dev/command");
+
+            // Publish ONLINE state (retained)
             client.publish("dev/online", "online", true);
         }
     }
