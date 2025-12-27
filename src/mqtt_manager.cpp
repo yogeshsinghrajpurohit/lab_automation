@@ -12,34 +12,42 @@ void MQTTManager::setCallback(std::function<void(char*, byte*, unsigned int)> cb
 
 void MQTTManager::begin() {
     client.setServer(server, port);
+    Serial.println("[MQTT] Broker configured");
 }
 
 void MQTTManager::loop() {
     if (!client.connected()) {
 
+        Serial.println("[MQTT] Connecting to broker...");
         String clientId = "ESP32-" + String((uint32_t)ESP.getEfuseMac(), HEX);
 
-        // ✅ CORRECT PLACE FOR LWT
         if (client.connect(
                 clientId.c_str(),
                 user,
                 password,
-                "dev/online",   // will topic
-                1,              // QoS
-                true,           // retained
-                "offline"       // will message
+                "dev/online",
+                1,
+                true,
+                "offline"
             )) {
 
+            Serial.println("[MQTT] Connected");
             client.subscribe("dev/command");
+            Serial.println("[MQTT] Subscribed: dev/command");
 
-            // Publish ONLINE state (retained)
             client.publish("dev/online", "online", true);
+            Serial.println("[MQTT] Published: dev/online = online");
+        } else {
+            Serial.printf("[MQTT] Failed, rc=%d\n", client.state());
+            delay(3000);
         }
     }
+
     client.loop();
 }
 
 bool MQTTManager::publish(const char* topic, const char* payload, bool retain) {
+    Serial.printf("[MQTT] Publish → %s : %s\n", topic, payload);
     return client.publish(topic, payload, retain);
 }
 
